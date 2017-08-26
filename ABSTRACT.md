@@ -24,3 +24,6 @@ Keywords: **Tensorflow**, **Serialization**, **ProtocolBuffer**
 ## About Me
 
 Dboy Liao, 一個喜歡寫程式算算數學的業餘碼農。
+
+- <qmalliao@gmail.com>
+- [FB](https://www.facebook.com/dboyliao)
