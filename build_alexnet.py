@@ -1,18 +1,23 @@
 # -*- coding: utf8 -*-
 from __future__ import print_function
 import sys
+import csv
 import numpy as np
 import tensorflow as tf
 
 
 class AlexNet(object):
     
-    def __init__(self, npy_path=None):
-        graph, images_batch, keep_prob, logits = _build_alexnet(npy_path)
+    def __init__(self, npy_path=None, labels_file=None):
+        graph, images_batch, keep_prob, logits = self._build_alexnet(npy_path)
         self._graph = graph
         self.images_batch = images_batch
         self.keep_prob = keep_prob
         self.logits = logits
+        self.label_map = None
+        if labels_file:
+            self._load_labels_file(labels_file)
+
         with graph.as_default():
             with tf.name_scope("outputs"):
                 self.prob = tf.nn.softmax(self.logits, name="probability")
@@ -21,75 +26,87 @@ class AlexNet(object):
         
     def predict(self, images_batch):
         with tf.Session(graph=self._graph) as sess:
+            tf.global_variables_initializer().run()
             feed_dict = {self.images_batch: images_batch,
                          self.keep_prob: 1.0}
             pred = sess.run(self._pred, feed_dict=feed_dict)
-        return pred
-
-def _build_alexnet(npy_path=None):
-    alex_graph = tf.Graph()
-    if npy_path:
-        init_params = np.load(npy_path, encoding='bytes').item()
-    else:
-        init_params = {}
+        if self.label_map is None:
+            return pred
+        else:
+            return np.vectorize(self.label_map.get)(pred)
     
-    with alex_graph.as_default():
-        images_batch = tf.placeholder(tf.float32, 
-                                      shape=[None, 227, 227, 3],
-                                      name="images_batch")
-        keep_prob = tf.placeholder(tf.float32, name="keep_prob")
+    def _load_labels_file(self, labels_file):
+        self.label_map = {}
+        with open(labels_file, "r", newline="") as rf:
+            reader = csv.reader(rf, delimiter=" ")
+            for index, desc in reader:
+                self.label_map[int(index)] = desc
+
+
+    def _build_alexnet(self, npy_path=None):
+        alex_graph = tf.Graph()
+        if npy_path:
+            init_params = np.load(npy_path, encoding='bytes').item()
+        else:
+            init_params = {}
+    
+        with alex_graph.as_default():
+            images_batch = tf.placeholder(tf.float32, 
+                                          shape=[None, 227, 227, 3],
+                                          name="images_batch")
+            keep_prob = tf.placeholder(tf.float32, name="keep_prob")
         
-        # Conv Layer 1 (lrn, max_pool)
-        conv1 = conv_layer(images_batch, (11, 11, 96), 4, 
-                           init_params=init_params.get("conv1", None), 
-                           name="conv1", padding="VALID")
-        lrn1 = lrn(conv1, 2, 2e-5, 0.75, name="lrn1")
-        pool1 = max_pool(lrn1, 3, 2, "VALID", name="max_pool1")
+            # Conv Layer 1 (lrn, max_pool)
+            conv1 = conv_layer(images_batch, (11, 11, 96), 4, 
+                               init_params=init_params.get("conv1", None), 
+                               name="conv1", padding="VALID")
+            lrn1 = lrn(conv1, 2, 2e-5, 0.75, name="lrn1")
+            pool1 = max_pool(lrn1, 3, 2, "VALID", name="max_pool1")
         
-        # Conv Layer 2 (2 groups, lrn, max_pool)
-        conv2 = conv_layer(pool1, (5, 5, 256), 1, groups=2,
-                           init_params=init_params.get("conv2", None), 
-                           name="conv2")
-        lrn2 = lrn(conv2, 2, 2e-5, 0.75, name="lrn2")
-        pool2 = max_pool(lrn2, 3, 2, 'VALID', name="max_pool2")
-        
-        # Conv Layer 3
-        conv3 = conv_layer(pool2, (3, 3, 384), 1, 
-                           init_params=init_params.get("conv3", None),
-                           name="conv3")
-        
-        # Conv Layer 4 (2 groups)
-        conv4 = conv_layer(conv3, (3, 3, 384), 1, groups=2,
-                           init_params=init_params.get("conv4", None),
-                           name="conv4")
-        
-        # Conv Layer 5 (2 groups)
-        conv5 = conv_layer(conv4, (3, 3, 256), 1, groups=2,
-                           init_params=init_params.get("conv5", None),
-                           name="conv5")
-        pool5 = max_pool(conv5, 3, 2, 'VALID', name="max_pool5")
-        
-        # Fully Connect 6
-        flatten = tf.reshape(pool5, [-1, 6*6*256])
-        fc6 = fully_connect(flatten, (6*6*256, 4096), 
-                            init_params=init_params.get("fc6", None), 
-                            name="fc6")
-        dropout6 = dropout(fc6, keep_prob)
-        
-        # Fully Connect 7
-        fc7 = fully_connect(dropout6, (4096, 4096), 
-                            init_params=init_params.get("fc7", None), 
-                            name='fc7')
-        dropout7 = dropout(fc7, keep_prob)
-        
-        # Fully Connect 8
-        logits = fully_connect(dropout7, (4096, 1000), 
-                               init_params=init_params.get("fc8", None),
-                               name="fc8",
-                               apply_relu=False)
-        
-        
-    return alex_graph, images_batch, keep_prob, logits
+            # Conv Layer 2 (2 groups, lrn, max_pool)
+            conv2 = conv_layer(pool1, (5, 5, 256), 1, groups=2,
+                               init_params=init_params.get("conv2", None), 
+                               name="conv2")
+            lrn2 = lrn(conv2, 2, 2e-5, 0.75, name="lrn2")
+            pool2 = max_pool(lrn2, 3, 2, 'VALID', name="max_pool2")
+
+            # Conv Layer 3
+            conv3 = conv_layer(pool2, (3, 3, 384), 1, 
+                               init_params=init_params.get("conv3", None),
+                               name="conv3")
+
+            # Conv Layer 4 (2 groups)
+            conv4 = conv_layer(conv3, (3, 3, 384), 1, groups=2,
+                               init_params=init_params.get("conv4", None),
+                               name="conv4")
+
+            # Conv Layer 5 (2 groups)
+            conv5 = conv_layer(conv4, (3, 3, 256), 1, groups=2,
+                               init_params=init_params.get("conv5", None),
+                               name="conv5")
+            pool5 = max_pool(conv5, 3, 2, 'VALID', name="max_pool5")
+
+            # Fully Connect 6
+            flatten = tf.reshape(pool5, [-1, 6*6*256])
+            fc6 = fully_connect(flatten, (6*6*256, 4096), 
+                                init_params=init_params.get("fc6", None), 
+                                name="fc6")
+            dropout6 = dropout(fc6, keep_prob)
+
+            # Fully Connect 7
+            fc7 = fully_connect(dropout6, (4096, 4096), 
+                                init_params=init_params.get("fc7", None), 
+                                name='fc7')
+            dropout7 = dropout(fc7, keep_prob)
+
+            # Fully Connect 8
+            logits = fully_connect(dropout7, (4096, 1000), 
+                                   init_params=init_params.get("fc8", None),
+                                   name="fc8",
+                                   apply_relu=False)
+
+
+        return alex_graph, images_batch, keep_prob, logits
 
 
 def conv_layer(inputs, kshape, stride, 
@@ -97,7 +114,7 @@ def conv_layer(inputs, kshape, stride,
                name="conv", padding="SAME"):
     """
     Convolution Layer for AlexNet
-    
+
     params
     ======
     - inputs: input tf.Tensor
@@ -117,7 +134,7 @@ def conv_layer(inputs, kshape, stride,
     else:
         init_kernel = None
         init_bias = None
-    
+
     in_channels = inputs.shape.as_list()[-1]
     kheight, kwidth, num_kernels = kshape
     convolve = lambda i, k: tf.nn.conv2d(i, k, 
@@ -144,7 +161,7 @@ def conv_layer(inputs, kshape, stride,
             output_groups = [convolve(i, k) for i, k in zip(input_groups, kernel_groups)]
             conv = tf.concat(axis=3, values=output_groups, name="feature_maps")
         act = tf.nn.relu(tf.nn.bias_add(conv, bias), name="activation")
-            
+
     return act
 
 
@@ -156,7 +173,7 @@ def fully_connect(inputs, weight_shape, init_params=None, name=None, apply_relu=
     if init_params:
         init_weight = lambda shape, dtype, partition_info: init_params[0]
         init_bias = lambda shape, dtype, partition_info: init_params[1]
-    
+
     with tf.variable_scope(name):
         weights = tf.get_variable("weights", 
                                   shape=weight_shape, 
@@ -170,7 +187,7 @@ def fully_connect(inputs, weight_shape, init_params=None, name=None, apply_relu=
         if apply_relu:
             return tf.nn.relu(act, name="relu")
         return act
-        
+
 
 
 def lrn(inputs, radius, alpha, beta, bias=1.0, name=None):

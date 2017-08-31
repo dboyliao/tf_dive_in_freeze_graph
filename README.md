@@ -12,4 +12,4 @@ I borrow some code by **kratzert** (the [repo](https://github.com/kratzert/finet
 
 **Make sure you have the .npy file before running any code**.
 
-The label txt file is found [here](https://gist.github.com/aaronpolhamus/964a4411c0906315deb9f4a3723aac57)
+The label txt file is found [here](https://gist.github.com/yrevar/942d3a0ac09ec9e5eb3a)
