@@ -1,3 +1,5 @@
 *.npy
 *.pb
 dev.ipynb
+SessionChkp
+graph_logs
