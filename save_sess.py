@@ -9,8 +9,11 @@ def main(chkp_path, npy_path=None, labels_file=None):
     """
     main function
     """
+    # pylint: disable=C0301
     _ = print("Building with pretrained weights: {}".format(npy_path)) if npy_path else None
     _ = print("Building with labels file: {}".format(labels_file)) if labels_file else None
+    # pylint: enable=C0301
+
     net = AlexNet(npy_path=npy_path, labels_file=labels_file)
     with tf.Session(graph=net._graph) as sess:
         saver = tf.train.Saver()
