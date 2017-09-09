@@ -1,5 +1,5 @@
 *.npy
 *.pb
 dev.ipynb
-SessionChkp
+SavedSession
 graph_logs
