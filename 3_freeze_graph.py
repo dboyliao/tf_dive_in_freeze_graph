@@ -35,4 +35,3 @@ if __name__ == "__main__":
                         default="imagenet_labels.txt")
     args = vars(parser.parse_known_args()[0])
     main(**args)
-

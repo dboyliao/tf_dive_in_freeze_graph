@@ -13,7 +13,7 @@ def main(chkp_path):
         saver.restore(sess, chkp_path)
     for node in graph.as_graph_def().node:
         print(node.name, node.op)
-
+    print("Create tensorboard event....")
     writer = tf.summary.FileWriter(logdir="graph_logs/restore_graph",
                                    graph=graph)
     writer.close()
