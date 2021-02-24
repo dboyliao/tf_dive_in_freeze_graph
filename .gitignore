@@ -1,6 +1,8 @@
 *.npy
 *.pb
 dev.ipynb
-SavedSession
-graph_logs
+*logs/
+save_session
+
+*.html
 reveal.js
